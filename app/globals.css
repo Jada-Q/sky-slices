@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  /* Default = "day" band. Overridden client-side based on local hour. */
   --background: #fafaf9;
   --foreground: #1c1917;
 }
@@ -17,6 +18,31 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Helvetica Neue",
     Arial, sans-serif;
+  /* Slow transition so 5pm → dusk doesn't snap. */
+  transition: background-color 30s linear, color 30s linear;
+}
+
+/* Subtle breathing animation for wall tiles. Each tile gets a stagger
+   via inline animation-delay so the wall has a heartbeat instead of a
+   single global pulse. */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.012);
+  }
+}
+
+.breathe {
+  animation: breathe 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe {
+    animation: none;
+  }
 }
 
 /* react-colorful sizing override (mobile + desktop) */

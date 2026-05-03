@@ -162,11 +162,14 @@ export default function WallPage() {
             gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
           }}
         >
-          {sorted.map((s) => (
+          {sorted.map((s, i) => (
             <article
               key={s.id}
-              className="group relative aspect-square rounded-md overflow-hidden border border-neutral-200/50 transition-transform hover:scale-[1.02]"
-              style={{ backgroundColor: s.color_hex }}
+              className="breathe group relative aspect-square rounded-md overflow-hidden border border-neutral-200/50"
+              style={{
+                backgroundColor: s.color_hex,
+                animationDelay: `${(i * 0.41) % 7}s`,
+              }}
               title={`${s.city} · ${relativeTime(s.captured_at)} · ${s.color_hex}${
                 s.lng !== null ? ` · ${s.lng.toFixed(1)}°` : ""
               }`}
