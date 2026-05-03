@@ -14,8 +14,6 @@ type SkySlice = {
 };
 
 const POLL_MS = 12_000;
-
-// Marker longitudes spanning the wall left → right.
 const MARKER_LNGS = [-180, -90, 0, 90, 180] as const;
 
 function relativeTime(iso: string): string {
@@ -29,18 +27,6 @@ function relativeTime(iso: string): string {
   return `${d}d`;
 }
 
-// Sort: -180 (west) → +180 (east). Null lng goes to the end ("location unknown").
-function sortByLongitude(slices: SkySlice[]): SkySlice[] {
-  return [...slices].sort((a, b) => {
-    if (a.lng === null && b.lng === null) return 0;
-    if (a.lng === null) return 1;
-    if (b.lng === null) return -1;
-    return a.lng - b.lng;
-  });
-}
-
-// Local hour at given longitude RIGHT NOW.
-// Earth: each 15° east of UTC = +1 hour.
 function localHourAt(lng: number, nowUtcMs: number): number {
   const utcHour = (nowUtcMs / 3_600_000) % 24;
   const local = utcHour + lng / 15;
@@ -48,8 +34,40 @@ function localHourAt(lng: number, nowUtcMs: number): number {
 }
 
 function formatHour(h: number): string {
-  const rounded = Math.round(h) % 24;
-  return rounded.toString().padStart(2, "0") + ":00";
+  return (Math.round(h) % 24).toString().padStart(2, "0") + ":00";
+}
+
+// Group slices into N longitude columns, newest on top within each column.
+function bucketByColumn(slices: SkySlice[], numCols: number): SkySlice[][] {
+  const buckets: SkySlice[][] = Array.from({ length: numCols }, () => []);
+  for (const s of slices) {
+    if (s.lng === null) continue;
+    const norm = (s.lng + 180) / 360; // 0..1
+    const idx = Math.min(numCols - 1, Math.max(0, Math.floor(norm * numCols)));
+    buckets[idx].push(s);
+  }
+  // Within each column: newest first (will appear on top of the brick stack).
+  for (const b of buckets) {
+    b.sort(
+      (a, c) =>
+        new Date(c.captured_at).getTime() - new Date(a.captured_at).getTime(),
+    );
+  }
+  return buckets;
+}
+
+function useResponsiveColumns(): number {
+  const [n, setN] = useState(7);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      setN(w < 640 ? 4 : w < 1024 ? 5 : 7);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return n;
 }
 
 export default function WallPage() {
@@ -57,7 +75,9 @@ export default function WallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const [newestId, setNewestId] = useState<number | null>(null);
   const cancelled = useRef(false);
+  const numCols = useResponsiveColumns();
 
   useEffect(() => {
     cancelled.current = false;
@@ -71,7 +91,15 @@ export default function WallPage() {
         if (data.error) {
           setError(data.error);
         } else if (data.slices) {
-          setSlices(data.slices);
+          setSlices((prev) => {
+            const prevTopId = prev[0]?.id ?? null;
+            const nextTopId = data.slices?.[0]?.id ?? null;
+            if (nextTopId !== null && nextTopId !== prevTopId && prev.length > 0) {
+              setNewestId(nextTopId);
+              setTimeout(() => setNewestId(null), 1500);
+            }
+            return data.slices ?? [];
+          });
           setError(null);
         }
       } catch (e) {
@@ -92,12 +120,18 @@ export default function WallPage() {
     };
   }, []);
 
-  const sorted = useMemo(() => sortByLongitude(slices), [slices]);
-  const placedCount = sorted.filter((s) => s.lng !== null).length;
+  const columns = useMemo(
+    () => bucketByColumn(slices, numCols),
+    [slices, numCols],
+  );
+  const placedCount = columns.reduce((s, c) => s + c.length, 0);
+  const unplacedCount = slices.length - placedCount;
 
   return (
     <main className="flex-1 flex flex-col">
-      <header className="flex items-center justify-between p-6 border-b border-neutral-200 bg-white/70 backdrop-blur sticky top-0 z-10">
+      <header className="flex items-center justify-between p-6 border-b border-neutral-200/60 sticky top-0 z-10 backdrop-blur"
+        style={{ backgroundColor: "color-mix(in srgb, var(--background) 80%, transparent)" }}
+      >
         <div>
           <h1 className="text-lg font-medium tracking-tight">此刻的天空</h1>
           <p className="text-xs text-neutral-500 mt-0.5">
@@ -105,7 +139,9 @@ export default function WallPage() {
               ? "正在加载…"
               : error
                 ? `加载失败：${error}`
-                : `${slices.length} 片 · 按经度从西到东 · 地球此刻的横切面`}
+                : `${placedCount} 片砖 · 按经度区段往上堆 · 越上面越新${
+                    unplacedCount > 0 ? ` · ${unplacedCount} 片未定位` : ""
+                  }`}
           </p>
         </div>
         <Link
@@ -146,8 +182,8 @@ export default function WallPage() {
         </div>
       )}
 
-      <section className="flex-1 p-3 px-6 pb-12">
-        {!loading && slices.length === 0 && !error && (
+      <section className="flex-1 px-6 pb-16">
+        {!loading && placedCount === 0 && !error && (
           <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">
             墙上还没有天空。
             <Link href="/" className="ml-2 underline hover:text-neutral-700">
@@ -157,36 +193,48 @@ export default function WallPage() {
         )}
 
         <div
-          className="grid gap-1"
-          style={{
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          }}
+          className="grid gap-[2px]"
+          style={{ gridTemplateColumns: `repeat(${numCols}, 1fr)` }}
         >
-          {sorted.map((s, i) => (
-            <article
-              key={s.id}
-              className="breathe group relative aspect-square rounded-md overflow-hidden border border-neutral-200/50"
+          {columns.map((col, colIdx) => (
+            <div
+              key={colIdx}
+              className="flex flex-col"
               style={{
-                backgroundColor: s.color_hex,
-                animationDelay: `${(i * 0.41) % 7}s`,
+                // Masonry stagger: alternate columns offset by half a brick
+                // (50% of column width = half block height since aspect-square).
+                paddingTop: colIdx % 2 === 1 ? "50%" : 0,
               }}
-              title={`${s.city} · ${relativeTime(s.captured_at)} · ${s.color_hex}${
-                s.lng !== null ? ` · ${s.lng.toFixed(1)}°` : ""
-              }`}
             >
-              <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 bg-gradient-to-t from-black/50 to-transparent text-white text-[10px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="font-medium truncate">{s.city}</div>
-                <div className="opacity-80">
-                  {relativeTime(s.captured_at)}
-                  {s.lng !== null && (
-                    <span className="ml-2 opacity-70">
-                      {s.lng > 0 ? "+" : ""}
-                      {s.lng.toFixed(0)}°
-                    </span>
-                  )}
-                </div>
-              </div>
-            </article>
+              {col.map((s) => (
+                <article
+                  key={s.id}
+                  className={`breathe group relative aspect-square overflow-hidden border-t border-l border-r border-white/30 ${
+                    newestId === s.id ? "brick-land" : ""
+                  }`}
+                  style={{
+                    backgroundColor: s.color_hex,
+                    animationDelay: `${(s.id * 0.31) % 7}s`,
+                  }}
+                  title={`${s.city} · ${relativeTime(s.captured_at)} · ${s.color_hex}${
+                    s.lng !== null ? ` · ${s.lng.toFixed(1)}°` : ""
+                  }`}
+                >
+                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 bg-gradient-to-t from-black/55 to-transparent text-white text-[10px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="font-medium truncate">{s.city}</div>
+                    <div className="opacity-80">
+                      {relativeTime(s.captured_at)}
+                      {s.lng !== null && (
+                        <span className="ml-2 opacity-70">
+                          {s.lng > 0 ? "+" : ""}
+                          {s.lng.toFixed(0)}°
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           ))}
         </div>
       </section>
