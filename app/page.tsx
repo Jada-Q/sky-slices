@@ -78,24 +78,94 @@ export default function PickerPage() {
   }
 
   if (done) {
+    // If geo failed (lng=null), land at the horizon center.
+    const lngPct = lng !== null ? ((lng + 180) / 360) * 100 : 50;
+    const localTime = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     return (
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-6">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-3xl">
+          {/* Hour markers + horizon line: stand-in for "the wall" the
+              slice is landing onto, no need to render every other tile. */}
           <div
-            className="w-full aspect-[3/2] rounded-2xl shadow-sm border border-neutral-200"
-            style={{ backgroundColor: color }}
-          />
-          <p className="text-neutral-600 leading-relaxed">
-            谢谢你的天空。
-            <br />
-            它已经挂在墙上了。
-          </p>
-          <Link
-            href="/wall"
-            className="inline-block px-6 py-3 bg-neutral-900 text-white rounded-full text-sm tracking-wide hover:bg-neutral-700 transition-colors"
+            className="grid text-[10px] tracking-[0.25em] uppercase text-neutral-400 fade-up-1"
+            style={{ gridTemplateColumns: "repeat(5, 1fr)" }}
           >
-            去看看大家的天空 →
-          </Link>
+            <span className="text-left">00:00 -180°</span>
+            <span className="text-center">06:00 -90°</span>
+            <span className="text-center">12:00 0°</span>
+            <span className="text-center">18:00 +90°</span>
+            <span className="text-right">00:00 +180°</span>
+          </div>
+
+          <div className="relative h-64 mt-6 fade-up-1">
+            {/* horizon line */}
+            <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-neutral-300 to-transparent" />
+
+            {/* slice + ripple at landing position */}
+            <div
+              className="absolute"
+              style={{
+                top: "50%",
+                left: `${lngPct}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <div
+                className="slice-ripple absolute inset-0 rounded-md"
+                style={{
+                  border: `1px solid ${color}`,
+                  width: 96,
+                  height: 96,
+                  marginLeft: -48,
+                  marginTop: -48,
+                  left: "50%",
+                  top: "50%",
+                  position: "absolute",
+                }}
+              />
+              <div
+                className="slice-fall rounded-md shadow-lg"
+                style={{
+                  backgroundColor: color,
+                  width: 96,
+                  height: 96,
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="mt-12 text-center space-y-3">
+            <p
+              className="fade-up-2 font-serif text-2xl md:text-3xl text-neutral-800"
+              style={{ fontFamily: "Cormorant Garamond, ui-serif, Georgia, serif" }}
+            >
+              你的天空已落入
+              <span className="font-medium ml-2">{city || "world"}</span>
+            </p>
+            <p className="fade-up-2 text-[11px] tracking-[0.3em] uppercase text-neutral-400 font-mono">
+              {color} · {localTime}
+              {lng !== null && (
+                <>
+                  {" · "}
+                  {lng > 0 ? "+" : ""}
+                  {lng.toFixed(0)}°
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="mt-10 text-center fade-up-3">
+            <Link
+              href="/wall"
+              className="inline-block px-6 py-3 bg-neutral-900 text-white rounded-full text-sm tracking-wide hover:bg-neutral-700 transition-colors"
+            >
+              去看大家的天空 →
+            </Link>
+          </div>
         </div>
       </main>
     );

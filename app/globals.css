@@ -45,6 +45,90 @@ body {
   }
 }
 
+/* Submit-cinematic: slice falls from above, lands on the horizon line,
+   ripple expands at landing, caption fades in last. Pure CSS — keeps
+   the page bundle 0kb heavier. */
+@keyframes slice-fall {
+  0% {
+    transform: translateY(-220%) scale(0.7);
+    opacity: 0;
+    filter: blur(6px);
+  }
+  10% {
+    opacity: 1;
+    filter: blur(4px);
+  }
+  85% {
+    filter: blur(0);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes slice-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slice-fall {
+  animation: slice-fall 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.slice-ripple {
+  animation: slice-ripple 1.4s ease-out 1s forwards;
+  will-change: transform, opacity;
+}
+
+.fade-up-1 {
+  opacity: 0;
+  animation: fade-up 0.6s ease-out 1.3s forwards;
+}
+
+.fade-up-2 {
+  opacity: 0;
+  animation: fade-up 0.6s ease-out 1.7s forwards;
+}
+
+.fade-up-3 {
+  opacity: 0;
+  animation: fade-up 0.6s ease-out 2.1s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slice-fall,
+  .slice-ripple,
+  .fade-up-1,
+  .fade-up-2,
+  .fade-up-3 {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 /* react-colorful sizing override (mobile + desktop) */
 .react-colorful {
   width: 100% !important;
