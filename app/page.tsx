@@ -168,8 +168,8 @@ export default function PickerPage() {
 
           <div className="mt-12 text-center space-y-3">
             <p
-              className="fade-up-2 font-serif text-2xl md:text-3xl text-neutral-800"
-              style={{ fontFamily: "Cormorant Garamond, ui-serif, Georgia, serif" }}
+              className="fade-up-2 text-3xl md:text-4xl text-neutral-800"
+              style={{ fontFamily: "var(--font-serif), var(--font-serif-cjk), ui-serif, Georgia, serif" }}
             >
               你的天空已落入
               <span className="font-medium ml-2">{city || "world"}</span>
@@ -202,13 +202,19 @@ export default function PickerPage() {
   return (
     <main className="flex-1 flex items-center justify-center p-6">
       <div className="max-w-md w-full space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-medium tracking-tight">
+        <header className="space-y-2">
+          <h1
+            className="text-4xl md:text-5xl leading-[1.15] text-neutral-800"
+            style={{
+              fontFamily: "var(--font-serif), var(--font-serif-cjk), ui-serif, Georgia, serif",
+              fontWeight: 400,
+            }}
+          >
             你窗外的天空，
             <br />
             是什么颜色？
           </h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 leading-relaxed">
             把它存起来，和此刻全世界的天空拼在一起。
           </p>
         </header>
