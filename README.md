@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sky Slices
 
-## Getting Started
+> 你窗外的天空，是什么颜色？
 
-First, run the development server:
+一个共时性 art piece：用户取一块代表此刻自己窗外天空的颜色，连同所在城市，提交到一面实时刷新的墙上。100 块色块拼起来，就是地球此刻的天空切片。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **picker**（`/`）：取色器 + 城市（自动检测）+ 提交
+- **wall**（`/wall`）：实时网格，新提交立刻冒出来
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Next.js 16 (App Router) + TypeScript + Tailwind v4
+- Supabase (Postgres + Realtime) — anon key + RLS
+- `react-colorful` HexColorPicker
+- ipapi.co (free tier, 城市级 IP geolocation)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 一次性 setup（约 3 分钟）
 
-## Learn More
+1. **建 Supabase 项目** — https://supabase.com/dashboard → New project（选最近的区域，密码随便记一下）
 
-To learn more about Next.js, take a look at the following resources:
+2. **跑 schema** — Dashboard → SQL Editor → New query → 粘贴 `supabase/schema.sql` 里的内容 → Run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **复制 keys** — Dashboard → Project Settings → API
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon` `public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **写到 `.env.local`**（注意用 `printf` 而不是 `echo`，避免隐藏字符）：
 
-## Deploy on Vercel
+   ```bash
+   cp .env.example .env.local
+   # 然后用编辑器填值，或者：
+   printf 'NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...\n' > .env.local
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5. **跑起来**：
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npm run dev
+   ```
+
+   打开 http://localhost:3000，挑一块天空 → 点提交 → 看 `/wall`。
+
+## 部署
+
+Vercel 一键。环境变量在 Project Settings → Environment Variables 里加同样两条。
+
+## License
+
+MIT — fork it, remix it, run your own sky.
