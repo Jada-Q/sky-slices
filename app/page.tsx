@@ -12,12 +12,15 @@ type GeoResponse = {
   lng: number | null;
 };
 
+const NOTE_MAX_LEN = 60;
+
 export default function PickerPage() {
   const [color, setColor] = useState("#9bb6cf");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export default function PickerPage() {
           country,
           lat,
           lng,
+          note: note.trim() || null,
         }),
       });
       if (!res.ok) {
@@ -174,6 +178,14 @@ export default function PickerPage() {
               你的天空已落入
               <span className="font-medium ml-2">{city || "world"}</span>
             </p>
+            {note.trim() && (
+              <p
+                className="fade-up-2 italic text-lg md:text-xl text-neutral-600 max-w-md mx-auto leading-relaxed"
+                style={{ fontFamily: "var(--font-serif), var(--font-serif-cjk), ui-serif, Georgia, serif" }}
+              >
+                「{note.trim()}」
+              </p>
+            )}
             <p className="fade-up-2 text-[11px] tracking-[0.3em] uppercase text-neutral-400 font-mono">
               {color} · {localTime}
               {lng !== null && (
@@ -242,6 +254,31 @@ export default function PickerPage() {
           {country && (
             <p className="text-xs text-neutral-400">检测到：{country}</p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <label className="block text-xs uppercase tracking-wider text-neutral-500">
+              想留一句话？
+            </label>
+            <span
+              className={`text-[10px] font-mono ${
+                note.length > NOTE_MAX_LEN - 10
+                  ? "text-amber-600"
+                  : "text-neutral-400"
+              }`}
+            >
+              {note.length}/{NOTE_MAX_LEN}
+            </span>
+          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX_LEN))}
+            placeholder="可选 · 给这片天空写一句"
+            rows={2}
+            className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-base resize-none focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent leading-relaxed"
+            maxLength={NOTE_MAX_LEN}
+          />
         </div>
 
         {(error || reason) && (

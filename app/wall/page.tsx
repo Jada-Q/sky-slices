@@ -10,6 +10,7 @@ type SkySlice = {
   country: string | null;
   lat: number | null;
   lng: number | null;
+  note: string | null;
   captured_at: string;
 };
 
@@ -229,7 +230,10 @@ export default function WallPage() {
                     s.lng !== null ? ` · ${s.lng.toFixed(1)}°` : ""
                   }`}
                 >
-                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 bg-gradient-to-t from-black/55 to-transparent text-white text-[10px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
+                  {s.note && (
+                    <div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-white/70 group-hover:opacity-0 transition-opacity" />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 px-2 py-2 bg-gradient-to-t from-black/65 via-black/30 to-transparent text-white text-[10px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="font-medium truncate">{s.city}</div>
                     <div className="opacity-80">
                       {relativeTime(s.captured_at)}
@@ -240,6 +244,17 @@ export default function WallPage() {
                         </span>
                       )}
                     </div>
+                    {s.note && (
+                      <div
+                        className="mt-1 italic text-[11px] leading-snug opacity-95"
+                        style={{
+                          fontFamily:
+                            "var(--font-serif), var(--font-serif-cjk), ui-serif, Georgia, serif",
+                        }}
+                      >
+                        「{s.note}」
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}

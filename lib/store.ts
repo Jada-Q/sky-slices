@@ -20,8 +20,11 @@ export type SkySlice = {
   country: string | null;
   lat: number | null;
   lng: number | null;
+  note: string | null;
   captured_at: string;
 };
+
+export const NOTE_MAX_LEN = 60;
 
 function token(): string {
   const t = process.env.GITHUB_TOKEN?.trim();
@@ -80,6 +83,7 @@ function parseIssue(i: RawIssue): SkySlice | null {
     const data = JSON.parse(i.body) as Partial<SkySlice>;
     if (!data.color_hex || !/^#[0-9a-f]{6}$/i.test(data.color_hex)) return null;
     if (!data.city || typeof data.city !== "string") return null;
+    const rawNote = typeof data.note === "string" ? data.note.trim() : "";
     return {
       id: i.number,
       color_hex: data.color_hex.toLowerCase(),
@@ -87,6 +91,7 @@ function parseIssue(i: RawIssue): SkySlice | null {
       country: data.country ?? null,
       lat: typeof data.lat === "number" ? data.lat : null,
       lng: typeof data.lng === "number" ? data.lng : null,
+      note: rawNote.length > 0 ? rawNote.slice(0, NOTE_MAX_LEN) : null,
       captured_at: i.created_at,
     };
   } catch {
@@ -100,10 +105,15 @@ type CreateInput = {
   country: string | null;
   lat: number | null;
   lng: number | null;
+  note: string | null;
 };
 
 export async function createSlice(input: CreateInput): Promise<SkySlice> {
   const safeCity = input.city.slice(0, 80);
+  const safeNote =
+    input.note && input.note.trim().length > 0
+      ? input.note.trim().slice(0, NOTE_MAX_LEN)
+      : null;
   const title = `${safeCity} · ${input.color_hex}`;
   const body = JSON.stringify({
     color_hex: input.color_hex.toLowerCase(),
@@ -111,6 +121,7 @@ export async function createSlice(input: CreateInput): Promise<SkySlice> {
     country: input.country,
     lat: input.lat,
     lng: input.lng,
+    note: safeNote,
   });
 
   const res = await fetch(
