@@ -78,8 +78,16 @@ export default function PickerPage() {
   }
 
   if (done) {
-    // If geo failed (lng=null), land at the horizon center.
-    const lngPct = lng !== null ? ((lng + 180) / 360) * 100 : 50;
+    // Match the wall: 7 longitude columns. Slice lands at top of its column.
+    const NUM_COLS = 7;
+    const colIdx =
+      lng !== null
+        ? Math.min(
+            NUM_COLS - 1,
+            Math.max(0, Math.floor(((lng + 180) / 360) * NUM_COLS)),
+          )
+        : Math.floor(NUM_COLS / 2);
+    const colCenterPct = ((colIdx + 0.5) / NUM_COLS) * 100;
     const localTime = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -88,8 +96,6 @@ export default function PickerPage() {
     return (
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-3xl">
-          {/* Hour markers + horizon line: stand-in for "the wall" the
-              slice is landing onto, no need to render every other tile. */}
           <div
             className="grid text-[10px] tracking-[0.25em] uppercase text-neutral-400 fade-up-1"
             style={{ gridTemplateColumns: "repeat(5, 1fr)" }}
@@ -101,29 +107,51 @@ export default function PickerPage() {
             <span className="text-right">00:00 +180°</span>
           </div>
 
+          {/* Wall preview: 7 column lanes; the user's slice lands at the
+              top of its column. Other lanes stay empty placeholders so
+              the geographic story reads at a glance. */}
           <div className="relative h-64 mt-6 fade-up-1">
-            {/* horizon line */}
-            <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-neutral-300 to-transparent" />
+            <div
+              className="absolute inset-0 grid gap-[2px]"
+              style={{ gridTemplateColumns: `repeat(${NUM_COLS}, 1fr)` }}
+            >
+              {Array.from({ length: NUM_COLS }).map((_, i) => (
+                <div
+                  key={i}
+                  className="border-t border-dashed border-neutral-300/70"
+                  style={{
+                    paddingTop: i % 2 === 1 ? "50%" : 0,
+                  }}
+                />
+              ))}
+            </div>
 
-            {/* slice + ripple at landing position */}
+            {/* Highlight: thin guide line marking the user's column from
+                the top edge of the wall down. Reads as a "this is where
+                you land" hint while the slice is still falling. */}
+            <div
+              className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-neutral-300 via-neutral-300/40 to-transparent"
+              style={{ left: `${colCenterPct}%` }}
+            />
+
+            {/* Slice + ripple at the column's top */}
             <div
               className="absolute"
               style={{
-                top: "50%",
-                left: `${lngPct}%`,
-                transform: "translate(-50%, -50%)",
+                top: 0,
+                left: `${colCenterPct}%`,
+                transform: "translateX(-50%)",
               }}
             >
               <div
-                className="slice-ripple absolute inset-0 rounded-md"
+                className="slice-ripple absolute rounded-md"
                 style={{
                   border: `1px solid ${color}`,
                   width: 96,
                   height: 96,
                   marginLeft: -48,
-                  marginTop: -48,
+                  top: 0,
                   left: "50%",
-                  top: "50%",
                   position: "absolute",
                 }}
               />
