@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { HexColorPicker } from "react-colorful";
-import { supabase } from "@/lib/supabase";
 import { rejectionReason } from "@/lib/sky-color";
 
 type GeoResponse = {
@@ -53,19 +52,29 @@ export default function PickerPage() {
       return;
     }
     setSubmitting(true);
-    const { error: insertError } = await supabase.from("sky_slices").insert({
-      color_hex: color.toLowerCase(),
-      city: city.trim().slice(0, 80),
-      country,
-      lat,
-      lng,
-    });
-    setSubmitting(false);
-    if (insertError) {
-      setError(insertError.message);
-      return;
+    try {
+      const res = await fetch("/api/slices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          color_hex: color.toLowerCase(),
+          city: city.trim().slice(0, 80),
+          country,
+          lat,
+          lng,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? `提交失败 (${res.status})`);
+        return;
+      }
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "网络问题，再试一次？");
+    } finally {
+      setSubmitting(false);
     }
-    setDone(true);
   }
 
   if (done) {

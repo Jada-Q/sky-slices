@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { supabase, type SkySlice } from "@/lib/supabase";
 
-const PAGE_SIZE = 200;
+type SkySlice = {
+  id: number;
+  color_hex: string;
+  city: string;
+  country: string | null;
+  captured_at: string;
+};
+
+const POLL_MS = 12_000;
 
 function relativeTime(iso: string): string {
   const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -20,37 +27,37 @@ function relativeTime(iso: string): string {
 export default function WallPage() {
   const [slices, setSlices] = useState<SkySlice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const cancelled = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    cancelled.current = false;
 
-    (async () => {
-      const { data, error } = await supabase
-        .from("sky_slices")
-        .select("*")
-        .order("captured_at", { ascending: false })
-        .limit(PAGE_SIZE);
-      if (cancelled) return;
-      if (!error && data) setSlices(data as SkySlice[]);
-      setLoading(false);
-    })();
+    const tick = async () => {
+      try {
+        const res = await fetch("/api/slices", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { slices?: SkySlice[]; error?: string };
+        if (cancelled.current) return;
+        if (data.error) {
+          setError(data.error);
+        } else if (data.slices) {
+          setSlices(data.slices);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled.current) setError(e instanceof Error ? e.message : "load failed");
+      } finally {
+        if (!cancelled.current) setLoading(false);
+      }
+    };
 
-    const channel = supabase
-      .channel("sky_slices_realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "sky_slices" },
-        (payload) => {
-          if (cancelled) return;
-          const next = payload.new as SkySlice;
-          setSlices((prev) => [next, ...prev].slice(0, PAGE_SIZE));
-        },
-      )
-      .subscribe();
+    tick();
+    const id = setInterval(tick, POLL_MS);
 
     return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
+      cancelled.current = true;
+      clearInterval(id);
     };
   }, []);
 
@@ -60,19 +67,23 @@ export default function WallPage() {
         <div>
           <h1 className="text-lg font-medium tracking-tight">此刻的天空</h1>
           <p className="text-xs text-neutral-500 mt-0.5">
-            {loading ? "正在加载…" : `${slices.length} 片来自世界各地的天空`}
+            {loading
+              ? "正在加载…"
+              : error
+                ? `加载失败：${error}`
+                : `${slices.length} 片来自世界各地的天空 · 每 ${POLL_MS / 1000}s 自动刷新`}
           </p>
         </div>
         <Link
           href="/"
-          className="px-4 py-2 text-sm border border-neutral-300 rounded-full hover:bg-neutral-100 transition-colors"
+          className="px-4 py-2 text-sm border border-neutral-300 rounded-full hover:bg-neutral-100 transition-colors whitespace-nowrap"
         >
           + 添加你的
         </Link>
       </header>
 
       <section className="flex-1 p-3">
-        {!loading && slices.length === 0 && (
+        {!loading && slices.length === 0 && !error && (
           <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">
             墙上还没有天空。
             <Link href="/" className="ml-2 underline hover:text-neutral-700">

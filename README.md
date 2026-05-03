@@ -2,48 +2,46 @@
 
 > 你窗外的天空，是什么颜色？
 
-一个共时性 art piece：用户取一块代表此刻自己窗外天空的颜色，连同所在城市，提交到一面实时刷新的墙上。100 块色块拼起来，就是地球此刻的天空切片。
+一个共时性 art piece：用户取一块代表此刻自己窗外天空的颜色，连同所在城市，提交到一面墙上。色块拼起来，就是地球此刻的天空切片。
 
-- **picker**（`/`）：取色器 + 城市（自动检测）+ 提交
-- **wall**（`/wall`）：实时网格，新提交立刻冒出来
+- **picker**（`/`）：取色器 + 城市自动检测 + 提交
+- **wall**（`/wall`）：网格，每 12 秒轮询新提交
 
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript + Tailwind v4
-- Supabase (Postgres + Realtime) — anon key + RLS
+- **Backend：GitHub Issues**（`Jada-Q/sky-slices-data`）— 每个 issue = 一片天空
 - `react-colorful` HexColorPicker
-- ipapi.co (free tier, 城市级 IP geolocation)
+- ipapi.co（free, IP → 城市）
 
-## 一次性 setup（约 3 分钟）
+为啥用 GitHub Issues 当 DB？为了 0 cloud-dashboard 设置。`gh auth token` 已经给了写权限，公开 repo 的 issues 直接可读。
 
-1. **建 Supabase 项目** — https://supabase.com/dashboard → New project（选最近的区域，密码随便记一下）
+## Setup（一次性）
 
-2. **跑 schema** — Dashboard → SQL Editor → New query → 粘贴 `supabase/schema.sql` 里的内容 → Run
+```bash
+git clone https://github.com/Jada-Q/sky-slices.git
+cd sky-slices
+npm install
+printf "GITHUB_TOKEN=$(gh auth token)\n" > .env.local
+npm run dev
+```
 
-3. **复制 keys** — Dashboard → Project Settings → API
-   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon` `public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+打开 http://localhost:3000 → 挑天空 → 提交 → 看 `/wall`。
 
-4. **写到 `.env.local`**（注意用 `printf` 而不是 `echo`，避免隐藏字符）：
+## 部署到 Vercel（Phase 2）
 
-   ```bash
-   cp .env.example .env.local
-   # 然后用编辑器填值，或者：
-   printf 'NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...\n' > .env.local
-   ```
+1. `vercel link` → 关联项目
+2. 在 Vercel Dashboard → Project Settings → Environment Variables 加 `GITHUB_TOKEN`
+   - 推荐生成 fine-grained PAT，仅授权 `sky-slices-data` 仓的 `Issues: read & write`
+   - https://github.com/settings/personal-access-tokens/new
+3. `vercel --prod`
 
-5. **跑起来**：
+## 数据治理
 
-   ```bash
-   npm run dev
-   ```
+所有提交都是 `Jada-Q/sky-slices-data` 里的 public issue。删除某条：去 issues 页 close + delete。批量清理：脚本调 `gh issue list --label slice --json number` + `gh issue delete`.
 
-   打开 http://localhost:3000，挑一块天空 → 点提交 → 看 `/wall`。
-
-## 部署
-
-Vercel 一键。环境变量在 Project Settings → Environment Variables 里加同样两条。
+GitHub API 速率：authenticated 5000 req/hour。服务端缓存 10s，写一次 = 一次 issue 创建。撑得住几千用户。
 
 ## License
 
-MIT — fork it, remix it, run your own sky.
+MIT.
