@@ -24,19 +24,22 @@ body {
 
 /* Subtle breathing animation for wall tiles. Each tile gets a stagger
    via inline animation-delay so the wall has a heartbeat instead of a
-   single global pulse. */
+   single global pulse. The --tilt CSS var (set per-tile inline)
+   carries the ema-style hanging angle through the animation so it's
+   not flattened to 0deg by the keyframes. */
 @keyframes breathe {
   0%, 100% {
-    transform: scale(1);
+    transform: rotate(var(--tilt, 0deg)) scale(1);
   }
   50% {
-    transform: scale(1.012);
+    transform: rotate(var(--tilt, 0deg)) scale(1.012);
   }
 }
 
 .breathe {
   animation: breathe 7s ease-in-out infinite;
   will-change: transform;
+  transform: rotate(var(--tilt, 0deg));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -131,17 +134,17 @@ body {
 
 /* Wall brick "lands" — when a new submission appears via polling, the
    topmost brick of its column briefly squishes (gravity arrival) and the
-   neighbours don't (only the new one). */
+   neighbours don't (only the new one). Carries --tilt through too. */
 @keyframes brick-land {
   0% {
-    transform: translateY(-30%) scaleY(0.85);
+    transform: rotate(var(--tilt, 0deg)) translateY(-30%) scaleY(0.85);
     filter: brightness(1.15);
   }
   60% {
-    transform: translateY(0) scaleY(1.05);
+    transform: rotate(var(--tilt, 0deg)) translateY(0) scaleY(1.05);
   }
   100% {
-    transform: translateY(0) scaleY(1);
+    transform: rotate(var(--tilt, 0deg)) translateY(0) scaleY(1);
     filter: brightness(1);
   }
 }

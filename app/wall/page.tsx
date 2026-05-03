@@ -15,7 +15,8 @@ type SkySlice = {
 };
 
 const POLL_MS = 12_000;
-const MARKER_LNGS = [-180, -90, 0, 90, 180] as const;
+const MARKER_LNGS_FULL = [-180, -90, 0, 90, 180] as const;
+const MARKER_LNGS_COMPACT = [-180, 0, 180] as const;
 
 function relativeTime(iso: string): string {
   const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -57,18 +58,33 @@ function bucketByColumn(slices: SkySlice[], numCols: number): SkySlice[][] {
   return buckets;
 }
 
-function useResponsiveColumns(): number {
-  const [n, setN] = useState(7);
+function useResponsiveLayout(): { numCols: number; markers: readonly number[] } {
+  const [v, setV] = useState({
+    numCols: 7,
+    markers: MARKER_LNGS_FULL as readonly number[],
+  });
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
-      setN(w < 640 ? 4 : w < 1024 ? 5 : 7);
+      setV({
+        numCols: w < 640 ? 4 : w < 1024 ? 5 : 7,
+        markers: w < 768 ? MARKER_LNGS_COMPACT : MARKER_LNGS_FULL,
+      });
     };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
-  return n;
+  return v;
+}
+
+// Deterministic per-id tilt for the ema-style hanging look. Same id
+// always yields the same angle, so the wall doesn't reshuffle on
+// re-render. ±1.5° is the sweet spot — visible but not chaotic.
+function tiltFor(id: number): number {
+  // Mulberry-ish: id-based pseudo-random in [-1.5, 1.5]
+  const r = ((id * 9301 + 49297) % 233280) / 233280;
+  return (r - 0.5) * 3;
 }
 
 export default function WallPage() {
@@ -78,7 +94,7 @@ export default function WallPage() {
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [newestId, setNewestId] = useState<number | null>(null);
   const cancelled = useRef(false);
-  const numCols = useResponsiveColumns();
+  const { numCols, markers } = useResponsiveLayout();
 
   useEffect(() => {
     cancelled.current = false;
@@ -167,15 +183,15 @@ export default function WallPage() {
           <div
             className="grid text-[10px] tracking-[0.2em] uppercase text-neutral-400"
             style={{
-              gridTemplateColumns: `repeat(${MARKER_LNGS.length}, 1fr)`,
+              gridTemplateColumns: `repeat(${markers.length}, 1fr)`,
             }}
           >
-            {MARKER_LNGS.map((lng, i) => {
+            {markers.map((lng, i) => {
               const h = localHourAt(lng, nowMs);
               const align =
                 i === 0
                   ? "text-left"
-                  : i === MARKER_LNGS.length - 1
+                  : i === markers.length - 1
                     ? "text-right"
                     : "text-center";
               return (
@@ -219,17 +235,22 @@ export default function WallPage() {
               {col.map((s) => (
                 <article
                   key={s.id}
-                  className={`breathe group relative aspect-square overflow-hidden border-t border-l border-r border-white/30 ${
+                  className={`breathe group relative aspect-square overflow-hidden rounded-t-md border-t border-l border-r border-amber-100/40 ${
                     newestId === s.id ? "brick-land" : ""
                   }`}
-                  style={{
-                    backgroundColor: s.color_hex,
-                    animationDelay: `${(s.id * 0.31) % 7}s`,
-                  }}
+                  style={
+                    {
+                      backgroundColor: s.color_hex,
+                      animationDelay: `${(s.id * 0.31) % 7}s`,
+                      "--tilt": `${tiltFor(s.id)}deg`,
+                    } as React.CSSProperties
+                  }
                   title={`${s.city} · ${relativeTime(s.captured_at)} · ${s.color_hex}${
                     s.lng !== null ? ` · ${s.lng.toFixed(1)}°` : ""
                   }`}
                 >
+                  {/* Hanging cord: tiny vertical mark above each ema */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-1.5 bg-stone-400/40 -mt-1.5" />
                   {s.note && (
                     <div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-white/70 group-hover:opacity-0 transition-opacity" />
                   )}

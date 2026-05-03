@@ -147,8 +147,12 @@ export default function PickerPage() {
                 transform: "translateX(-50%)",
               }}
             >
+              {/* Hanging cord */}
               <div
-                className="slice-ripple absolute rounded-md"
+                className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 w-px h-2 bg-stone-400/50 fade-up-1"
+              />
+              <div
+                className="slice-ripple absolute rounded-t-md"
                 style={{
                   border: `1px solid ${color}`,
                   width: 96,
@@ -160,7 +164,7 @@ export default function PickerPage() {
                 }}
               />
               <div
-                className="slice-fall rounded-md shadow-lg"
+                className="slice-fall rounded-t-md shadow-lg border-t border-l border-r border-amber-100/40"
                 style={{
                   backgroundColor: color,
                   width: 96,
