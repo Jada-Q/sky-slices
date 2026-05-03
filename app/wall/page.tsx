@@ -133,8 +133,17 @@ export default function WallPage() {
         style={{ backgroundColor: "color-mix(in srgb, var(--background) 80%, transparent)" }}
       >
         <div>
-          <h1 className="text-lg font-medium tracking-tight">此刻的天空</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">
+          <h1
+            className="text-2xl md:text-3xl text-neutral-800 leading-tight"
+            style={{
+              fontFamily:
+                "var(--font-serif), var(--font-serif-cjk), ui-serif, Georgia, serif",
+              fontWeight: 400,
+            }}
+          >
+            此刻的天空
+          </h1>
+          <p className="text-xs text-neutral-500 mt-1">
             {loading
               ? "正在加载…"
               : error
